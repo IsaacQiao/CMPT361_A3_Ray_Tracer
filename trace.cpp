@@ -58,7 +58,7 @@ bool check_shadow(Point o, Vector u, Spheres *sph)
     float t1 = (-B + sqrt(sqr)) / (2*A);
     float t2 = (-B - sqrt(sqr)) / (2*A);
 
-        if (sqr > 0 && t1 > 0 && t2 > 0) {
+        if (sqr > 0 && t1 > 0.01 && t2 > 0.01) {
             return true;
         }
 
@@ -91,7 +91,7 @@ RGB_float phong(Point p, Vector v, Vector surf_norm, Spheres *sph) {
   // 1/(a+bd+cd^2)
   float abcd = 1 / (decay_a + decay_b * d + decay_c * pow(d,2));
 
-  // decay * Diffuse
+  // Diffuse with attenuation
   // (1/(a+bd+cd^2)) * (Id * Kd *(n*l))
   float nl = vec_dot(surf_norm, l); // (n*l)
   C.r += abcd * (light1_diffuse[0] * sph->mat_diffuse[0] * nl);
@@ -112,7 +112,7 @@ RGB_float phong(Point p, Vector v, Vector surf_norm, Spheres *sph) {
   float rv = vec_dot(r, v);
   float rvn = pow(rv, N);
 
-  // decay*Specular
+  // Specular with attenuation
   // (1/(a+bd+cd^2)) * (Is * Ks *(r*v)^N)
   C.r += abcd * (light1_specular[0] * sph->mat_specular[0] * rvn);
   C.g += abcd * (light1_specular[1] * sph->mat_specular[1] * rvn);
@@ -142,6 +142,13 @@ RGB_float phong(Point p, Vector v, Vector surf_norm, Spheres *sph) {
   }
   // otherwise I is C
 
+  if (C.r > 255) C.r = 255;
+  if (C.g > 255) C.g = 255;
+  if (C.b > 255) C.b = 255;
+  if (C.r < 0) C.r = 0;
+  if (C.g < 0) C.g = 0;
+  if (C.b < 0) C.b = 0;
+
   return C;
 }
 
@@ -149,11 +156,25 @@ RGB_float phong(Point p, Vector v, Vector surf_norm, Spheres *sph) {
  * This is the recursive ray tracer - you need to implement this!
  * You should decide what arguments to use.
  ************************************************************************/
-RGB_float recursive_ray_trace() {
+RGB_float recursive_ray_trace(Point eye, Vector ray,int step_max) {
 //
 // do your thing here
 //
-	RGB_float color;
+	RGB_float color = background_clr;
+
+  Point *p = new Point;
+  Spheres *sph = intersect_scene(eye, ray, scene, p);
+
+  if (sph != NULL){ // sph is the closest sphere intersec
+    Vector v = get_vec(*p, eye);
+    normalize(&v);
+
+    Vector surf_norm = sphere_normal(*p, sph);
+    normalize(&surf_norm);
+
+    color = phong(*p, v, surf_norm, sph);
+  }
+
 	return color;
 }
 
@@ -189,6 +210,10 @@ void ray_trace() {
       //
       // ret_color = recursive_ray_trace();
       // ret_color = background_clr; // just background for now
+      
+      ret_color = recursive_ray_trace(eye_pos, ray, 0);
+
+      /* put this into recursive_ray_trace function
       Point *p = new Point;
       Spheres *sph = intersect_scene(eye_pos, ray, scene, p);
 
@@ -201,8 +226,9 @@ void ray_trace() {
 
       else{//no intersection
         ret_color = background_clr;
-      }
+      }*/
       
+
       // Parallel rays can be cast instead using below
       //
       // ray.x = ray.y = 0;

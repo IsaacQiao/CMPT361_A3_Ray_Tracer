@@ -27,18 +27,18 @@ float intersect_sphere(Point o, Vector u, Spheres *sph, Point *hit) {
 		float t1 = (-B + sqrt(sqr)) / (2*A);
 		float t2 = (-B - sqrt(sqr)) / (2*A);
 
-		if (t2 < 0.001){
+		if (t2 < 0.01){
 			return -1; // self shadow, no intersec
 		}
 
-		if (t1 >= 0.001){
+		if (t1 >= 0.01){
 			// set hit
 			hit->x = o.x + t1 * u.x;
 	    	hit->y = o.y + t1 * u.y;
 	    	hit->z = o.z + t1 * u.z;
     	}
 
-    	if (t2 >= 0.001){
+    	if (t2 >= 0.01){
 			// set hit
 			hit->x = o.x + t2 * u.x;
 	    	hit->y = o.y + t2 * u.y;
@@ -62,7 +62,7 @@ Spheres *intersect_scene(Point o, Vector u, Spheres *sphs, Point *hit) {
 	//return NULL;
     Spheres *closest = NULL;
 
-    float min_dis = 10000000000000000;
+    float min_dis = 9999999;
 
     while (sphs != NULL) {// find the closest sph if there is sph intersec with 0->u
         float dis = intersect_sphere(o, u, sphs, hit);
