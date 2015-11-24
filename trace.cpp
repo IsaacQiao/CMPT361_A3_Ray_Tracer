@@ -39,6 +39,7 @@ extern float decay_b;
 extern float decay_c;
 
 extern int shadow_on;
+extern int reflect_on;
 extern int step_max;
 
 /////////////////////////////////////////////////////////////////////
@@ -72,7 +73,6 @@ bool check_shadow(Point o, Vector u, Spheres *sph)
  *********************************************************************/
 RGB_float phong(Point p, Vector v, Vector surf_norm, Spheres *sph) {
 
-
   RGB_float C = {0, 0, 0}; //initialize
 
   // Phong's local illumination model
@@ -98,11 +98,10 @@ RGB_float phong(Point p, Vector v, Vector surf_norm, Spheres *sph) {
   C.g += abcd * (light1_diffuse[1] * sph->mat_diffuse[1] * nl);
   C.b += abcd * (light1_diffuse[2] * sph->mat_diffuse[2] * nl);
 
-  // compute r first
+  // / get refected ray r
   float angle = vec_dot(surf_norm, l);
   if (angle < 0) angle = 0;
-  Vector scaled_surf_norm = vec_scale(surf_norm, 2*angle);
-  Vector r = vec_minus(scaled_surf_norm, l);
+  Vector r = vec_minus(vec_scale(surf_norm, 2*angle), l);
   normalize(&r);
 
   // N is the shininess parameter for the object
@@ -156,7 +155,7 @@ RGB_float phong(Point p, Vector v, Vector surf_norm, Spheres *sph) {
  * This is the recursive ray tracer - you need to implement this!
  * You should decide what arguments to use.
  ************************************************************************/
-RGB_float recursive_ray_trace(Point eye, Vector ray,int step_max) {
+RGB_float recursive_ray_trace(Point eye, Vector ray, int step_now) {
 //
 // do your thing here
 //
@@ -173,6 +172,20 @@ RGB_float recursive_ray_trace(Point eye, Vector ray,int step_max) {
     normalize(&surf_norm);
 
     color = phong(*p, v, surf_norm, sph);
+
+    if (reflect_on == 1 && step_now < step_max){
+      // get refected ray r
+      // cout<<"a";
+      float angle = vec_dot(surf_norm, vec_scale(ray, -1));
+      if (angle < 0) angle = 0;
+      Vector r = vec_minus(vec_scale(surf_norm, 2*angle), vec_scale(ray, -1));
+      normalize(&r);
+
+      RGB_float reflected_color = recursive_ray_trace(*p, r, step_now + 1);
+      reflected_color = clr_scale(reflected_color, sph->reflectance);
+
+      color = clr_add(color, reflected_color);
+    }
   }
 
 	return color;
