@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <GL/glut.h>
 #include <math.h>
+#include <iostream>
 #include "global.h"
 #include "sphere.h"
 
+using namespace std;
 //
 // Global variables
 //
@@ -41,10 +43,34 @@ extern int step_max;
 
 /////////////////////////////////////////////////////////////////////
 
+// this function check if the light ray intersect with shadows
+bool check_shadow(Point o, Vector u, Spheres *sph)
+{
+    normalize(&u);
+
+    while (sph) {
+    float A = pow(u.x , 2) + pow(u.y , 2) + pow(u.z , 2);
+    float B = 2 * (u.x * (o.x - sph->center.x) + u.y * (o.y - sph->center.y) + u.z * (o.z - sph->center.z));
+    float C = pow(o.x - sph->center.x , 2) + pow(o.y - sph->center.y , 2) + pow(o.z - sph->center.z , 2) - pow(sph->radius , 2);
+
+    float sqr = pow(B , 2) - 4 * A * C;
+
+    float t1 = (-B + sqrt(sqr)) / (2*A);
+    float t2 = (-B - sqrt(sqr)) / (2*A);
+
+        if (sqr > 0 && t1 > 0 && t2 > 0) {
+            return true;
+        }
+
+        sph = sph->next;
+    }
+    return false;
+}
+
 /*********************************************************************
  * Phong illumination - you need to implement this!
  *********************************************************************/
-RGB_float phong(Point q, Vector v, Vector surf_norm, Spheres *sph) {
+RGB_float phong(Point p, Vector v, Vector surf_norm, Spheres *sph) {
 
 
   RGB_float C = {0, 0, 0}; //initialize
@@ -55,8 +81,8 @@ RGB_float phong(Point q, Vector v, Vector surf_norm, Spheres *sph) {
   // A = Iga * Kga + Ia * Ka
   // I = C + A
 
-  // turn q and light1 into vector l
-  Vector l = get_vec(q, light1);
+  // turn p and light1 into vector l
+  Vector l = get_vec(p, light1);
   normalize(&l);
 
   // d is the distance between the light source and the point on the object
@@ -92,27 +118,29 @@ RGB_float phong(Point q, Vector v, Vector surf_norm, Spheres *sph) {
   C.g += abcd * (light1_specular[1] * sph->mat_specular[1] * rvn);
   C.b += abcd * (light1_specular[2] * sph->mat_specular[2] * rvn);
 
-
-  /*RGB_float ambient = {0, 0, 0};
+  RGB_float A = {0, 0, 0};
 
   // Global ambient: Iga * Kga
   // Apply thevalues contained in the global ambient array to the sphere
-  ambient.r += global_ambient[0] * sph->reflectance;
-  ambient.g += global_ambient[1] * sph->reflectance;
-  ambient.b += global_ambient[2] * sph->reflectance;
-
+  A.r += global_ambient[0] * sph->reflectance;
+  A.g += global_ambient[1] * sph->reflectance;
+  A.b += global_ambient[2] * sph->reflectance;
 
   // Ambient: Ia * Ka
-  ambient.r += light1_ambient[0] * sph->mat_ambient[0];
-  ambient.g += light1_ambient[1] * sph->mat_ambient[1];
-  ambient.b += light1_ambient[2] * sph->mat_ambient[2];
+  A.r += light1_ambient[0] * sph->mat_ambient[0];
+  A.g += light1_ambient[1] * sph->mat_ambient[1];
+  A.b += light1_ambient[2] * sph->mat_ambient[2];
+
+  C.r += A.r;
+  C.g += A.g;
+  C.b += A.b;
 
   // Check if shadows are enabled
-  bool intersectShadow = intersect_sphere_shadow(q, l, scene);
-  if (shadow_on && intersectShadow){
-    color = ambient;
-  }*/
-
+  // if so, change I to A
+  if (shadow_on && check_shadow(p, l, scene)){
+    C = A;
+  }
+  // otherwise I is C
 
   return C;
 }

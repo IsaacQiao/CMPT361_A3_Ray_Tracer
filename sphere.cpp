@@ -24,17 +24,26 @@ float intersect_sphere(Point o, Vector u, Spheres *sph, Point *hit) {
 	}
 
 	else{
-		//float t1 = (-B + sqrt(sqr)) / (2*A);
+		float t1 = (-B + sqrt(sqr)) / (2*A);
 		float t2 = (-B - sqrt(sqr)) / (2*A);
 
 		if (t2 < 0.001){
 			return -1; // self shadow, no intersec
 		}
 
-		// set hit
-		hit->x = o.x + t2 * u.x;
-    	hit->y = o.y + t2 * u.y;
-    	hit->z = o.z + t2 * u.z;
+		if (t1 >= 0.001){
+			// set hit
+			hit->x = o.x + t1 * u.x;
+	    	hit->y = o.y + t1 * u.y;
+	    	hit->z = o.z + t1 * u.z;
+    	}
+
+    	if (t2 >= 0.001){
+			// set hit
+			hit->x = o.x + t2 * u.x;
+	    	hit->y = o.y + t2 * u.y;
+	    	hit->z = o.z + t2 * u.z;
+    	}
 
     	// calculate v and its length to be used in intersect_scene func
     	Vector v = {hit->x - o.x, hit->y - o.y, hit->z - o.z};
