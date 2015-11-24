@@ -13,7 +13,34 @@
  * stored in the "hit" variable
  **********************************************************************/
 float intersect_sphere(Point o, Vector u, Spheres *sph, Point *hit) {
-	return 0.0;
+	float A = pow(u.x , 2) + pow(u.y , 2) + pow(u.z , 2);
+	float B = 2 * (u.x * (o.x - sph->center.x) + u.y * (o.y - sph->center.y) + u.z * (o.z - sph->center.z));
+	float C = pow(o.x - sph->center.x , 2) + pow(o.y - sph->center.y , 2) + pow(o.z - sph->center.z , 2) - pow(sph->radius , 2);
+
+	float sqr = pow(B , 2) - 4 * A * C;
+
+	if (sqr < 0){
+		return -1; //sqrt less than 0, no intersec
+	}
+
+	else{
+		//float t1 = (-B + sqrt(sqr)) / (2*A);
+		float t2 = (-B - sqrt(sqr)) / (2*A);
+
+		if (t2 < 0.001){
+			return -1; // self shadow, no intersec
+		}
+
+		// set hit
+		hit->x = o.x + t2 * u.x;
+    	hit->y = o.y + t2 * u.y;
+    	hit->z = o.z + t2 * u.z;
+
+    	// calculate v and its length to be used in intersect_scene func
+    	Vector v = {hit->x - o.x, hit->y - o.y, hit->z - o.z};
+        
+        return vec_len(v);
+	}
 }
 
 /*********************************************************************
@@ -22,12 +49,24 @@ float intersect_sphere(Point o, Vector u, Spheres *sph, Point *hit) {
  * which arguments to use for the function. For exmaple, note that you
  * should return the point of intersection to the calling function.
  **********************************************************************/
-Spheres *intersect_scene() {
-//
-// do your thing here
-//
+Spheres *intersect_scene(Point o, Vector u, Spheres *sphs, Point *hit) {
+	//return NULL;
+    Spheres *closest = NULL;
 
-	return NULL;
+    float min_dis = 10000000000000000;
+
+    while (sphs != NULL) {// find the closest sph if there is sph intersec with 0->u
+        float dis = intersect_sphere(o, u, sphs, hit);
+
+        if ((dis != -1.0) && (dis < min_dis)) {
+            min_dis = min_dis;
+            closest = sphs;
+        }
+
+        sphs = sphs->next;
+    }
+
+    return closest;
 }
 
 /*****************************************************

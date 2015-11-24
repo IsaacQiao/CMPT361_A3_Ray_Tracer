@@ -5,8 +5,8 @@
  *      
  *  Render a simple scene using ray tracing
  * 
- *  NAME:
- *  SFU ID:
+ *  NAME:	BAIMING QIAO
+ *  SFU ID:	301243446
  *
  *  Template code for drawing a scene using raycasting.
  *  Some portions of the code was originally written by 
