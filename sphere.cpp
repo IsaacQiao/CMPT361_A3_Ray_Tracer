@@ -78,6 +78,71 @@ Spheres *intersect_scene(Point o, Vector u, Spheres *sphs, Point *hit) {
     return closest;
 }
 
+
+// chess board normal vector
+Vector board_norm = {0, -1, 0};
+// checking if the ray blocked by the chessboard 
+bool intersect_chessboard(Point p, Vector ray, Point *hit){
+  Point board_p = {0, -3, -10};
+  normalize(&board_norm);
+
+  Vector vec;
+  vec.x = p.x - board_p.x;
+  vec.y = p.y - board_p.y;
+  vec.z = p.z - board_p.z;
+
+  if (vec_dot(board_norm, ray) == 0 && vec_dot(board_norm, vec)) {
+    return false;
+  }
+
+  double t = vec_dot(board_norm, vec) / vec_dot(board_norm, ray);
+
+  if (-t > 0.01) {
+    hit->x = p.x - t * ray.x;
+    hit->y = p.y - t * ray.y;
+    hit->z = p.z - t * ray.z;
+    return true;
+  }
+
+  return false;
+}
+
+// check if the point in the board
+bool in_board(Point p){
+  int i = int(p.x + 100) - 100;
+  int j = int(p.z + 100) - 100;
+
+  if (i >= 4 || i < -4 || j >= -2 || j < -10) {
+    return false;
+  }
+
+  return true;
+}
+
+// check what is the board color at the current point
+RGB_float board_color(Point p){
+  RGB_float color;
+
+  int i = int(p.x + 100) - 100;
+  int j = int(p.z + 100) - 100;
+
+  if (i >= 4 || i < -4 || j >= -2 || j < -10) {
+    RGB_float colorb = {0.5, 0.05, 0.8};
+    return colorb;
+  }
+
+  if ((i % 2 == 0 && j % 2 == 0) || (i % 2 != 0 && j % 2 != 0)) {
+    RGB_float colora = {0, 0, 0};
+    color = colora;
+  }
+  else {
+    RGB_float colorb = {1, 1, 1};
+    color = colorb;
+  }
+
+  return color;
+}
+
 /*****************************************************
  * This function adds a sphere into the sphere list
  *

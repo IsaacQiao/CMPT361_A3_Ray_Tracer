@@ -27,3 +27,6 @@ Vector sphere_normal(Point, Spheres *);
 // add a sphere to the sphere list
 Spheres *add_sphere(Spheres *, Point, float, float [], float [], float [], float, float, int);
 
+bool intersect_chessboard(Point p, Vector ray, Point *hit);
+bool in_board(Point p);
+RGB_float board_color(Point p);

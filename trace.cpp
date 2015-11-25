@@ -41,37 +41,38 @@ extern float decay_c;
 extern int shadow_on;
 extern int reflect_on;
 extern int step_max;
+extern int chess_on;
 
 /////////////////////////////////////////////////////////////////////
 
 // this function check if the light ray intersect with shadows
 bool check_shadow(Point o, Vector u, Spheres *sph)
 {
-    normalize(&u);
+  normalize(&u);
 
-    while (sph) {
-    float A = pow(u.x , 2) + pow(u.y , 2) + pow(u.z , 2);
-    float B = 2 * (u.x * (o.x - sph->center.x) + u.y * (o.y - sph->center.y) + u.z * (o.z - sph->center.z));
-    float C = pow(o.x - sph->center.x , 2) + pow(o.y - sph->center.y , 2) + pow(o.z - sph->center.z , 2) - pow(sph->radius , 2);
+  while (sph) {
+  float A = pow(u.x , 2) + pow(u.y , 2) + pow(u.z , 2);
+  float B = 2 * (u.x * (o.x - sph->center.x) + u.y * (o.y - sph->center.y) + u.z * (o.z - sph->center.z));
+  float C = pow(o.x - sph->center.x , 2) + pow(o.y - sph->center.y , 2) + pow(o.z - sph->center.z , 2) - pow(sph->radius , 2);
 
-    float sqr = pow(B , 2) - 4 * A * C;
+  float sqr = pow(B , 2) - 4 * A * C;
 
-    float t1 = (-B + sqrt(sqr)) / (2*A);
-    float t2 = (-B - sqrt(sqr)) / (2*A);
+  float t1 = (-B + sqrt(sqr)) / (2*A);
+  float t2 = (-B - sqrt(sqr)) / (2*A);
 
-        if (sqr > 0 && t1 > 0.01 && t2 > 0.01) {
-            return true;
-        }
-
-        sph = sph->next;
+    if (sqr > 0 && t1 > 0.01 && t2 > 0.01) {
+      return true;
     }
-    return false;
+
+    sph = sph->next;
+  }
+  return false;
 }
 
 /*********************************************************************
  * Phong illumination - you need to implement this!
  *********************************************************************/
-RGB_float phong(Point p, Vector v, Vector surf_norm, Spheres *sph) {
+RGB_float phong(Point Intersect_point, Vector View_v, Vector surf_norm, Spheres *sph) {
 
   RGB_float C = {0, 0, 0}; //initialize
 
@@ -82,7 +83,7 @@ RGB_float phong(Point p, Vector v, Vector surf_norm, Spheres *sph) {
   // I = C + A
 
   // turn p and light1 into vector l
-  Vector l = get_vec(p, light1);
+  Vector l = get_vec(Intersect_point, light1);
   normalize(&l);
 
   // d is the distance between the light source and the point on the object
@@ -108,7 +109,7 @@ RGB_float phong(Point p, Vector v, Vector surf_norm, Spheres *sph) {
   int N = sph->mat_shineness;
 
   // compute (r*v)^N
-  float rv = vec_dot(r, v);
+  float rv = vec_dot(r, View_v);
   float rvn = pow(rv, N);
 
   // Specular with attenuation
@@ -136,17 +137,10 @@ RGB_float phong(Point p, Vector v, Vector surf_norm, Spheres *sph) {
 
   // Check if shadows are enabled
   // if so, change I to A
-  if (shadow_on && check_shadow(p, l, scene)){
+  if (shadow_on && check_shadow(Intersect_point, l, scene)){
     C = A;
   }
   // otherwise I is C
-
-  if (C.r > 255) C.r = 255;
-  if (C.g > 255) C.g = 255;
-  if (C.b > 255) C.b = 255;
-  if (C.r < 0) C.r = 0;
-  if (C.g < 0) C.g = 0;
-  if (C.b < 0) C.b = 0;
 
   return C;
 }
@@ -161,28 +155,53 @@ RGB_float recursive_ray_trace(Point eye, Vector ray, int step_now) {
 //
 	RGB_float color = background_clr;
 
-  Point *p = new Point;
-  Spheres *sph = intersect_scene(eye, ray, scene, p);
+  Point *Intersect_point = new Point;
+  Spheres *sph = intersect_scene(eye, ray, scene, Intersect_point);
+  
+  Point board_hit;
+  if (chess_on == 1 && intersect_chessboard(eye, ray, &board_hit))
+  {
+    Vector eye_vec = get_vec(board_hit, eye_pos);
+    normalize(&eye_vec);
+
+    color = board_color(board_hit);
+
+    Vector shadow_v = get_vec(board_hit, light1);
+
+    if (shadow_on && in_board(board_hit) && check_shadow(board_hit, shadow_v, scene)) {
+      color = clr_scale(color, 0);
+    }
+
+    if (reflect_on == 1 && in_board(board_hit) && step_now < step_max) {
+      Vector board_norm = {0, -1, 0};
+      normalize(&board_norm);
+
+      normalize(&ray);
+      Vector reflected_ray = vec_plus(vec_scale(board_norm, -2 * vec_dot(board_norm, ray)), ray);
+
+      RGB_float reflected_color = recursive_ray_trace(board_hit, reflected_ray, step_now + 1);
+
+      color = clr_add(color, clr_scale(reflected_color, -0.35));
+    }
+  }
 
   if (sph != NULL){ // sph is the closest sphere intersec
-    Vector v = get_vec(*p, eye);
-    normalize(&v);
+    Vector View_v = get_vec(*Intersect_point, eye);
+    normalize(&View_v);
 
-    Vector surf_norm = sphere_normal(*p, sph);
+    Vector surf_norm = sphere_normal(*Intersect_point, sph);
     normalize(&surf_norm);
 
-    color = phong(*p, v, surf_norm, sph);
+    color = phong(*Intersect_point, View_v, surf_norm, sph);
 
     if (reflect_on == 1 && step_now < step_max){
       // get refected ray r
-      // cout<<"a";
       float angle = vec_dot(surf_norm, vec_scale(ray, -1));
       if (angle < 0) angle = 0;
-      Vector r = vec_minus(vec_scale(surf_norm, 2*angle), vec_scale(ray, -1));
+      Vector r = vec_plus(vec_scale(surf_norm, 2*angle), ray);
       normalize(&r);
 
-      RGB_float reflected_color = recursive_ray_trace(*p, r, step_now + 1);
-      reflected_color = clr_scale(reflected_color, sph->reflectance);
+      RGB_float reflected_color = clr_scale(recursive_ray_trace(*Intersect_point, r, step_now + 1), sph->reflectance);
 
       color = clr_add(color, reflected_color);
     }
@@ -217,30 +236,8 @@ void ray_trace() {
   for (i=0; i<win_height; i++) {
     for (j=0; j<win_width; j++) {
       ray = get_vec(eye_pos, cur_pixel_pos);
-
-      //
-      // You need to change this!!!
-      //
-      // ret_color = recursive_ray_trace();
-      // ret_color = background_clr; // just background for now
       
       ret_color = recursive_ray_trace(eye_pos, ray, 0);
-
-      /* put this into recursive_ray_trace function
-      Point *p = new Point;
-      Spheres *sph = intersect_scene(eye_pos, ray, scene, p);
-
-      if (sph != NULL){ // sph is the closest sphere intersec
-        Vector v = get_vec(*p, eye_pos);
-        normalize(&v);
-        Vector surf_norm = sphere_normal(*p, sph);
-        ret_color = phong(*p, v, surf_norm, sph);
-      }
-
-      else{//no intersection
-        ret_color = background_clr;
-      }*/
-      
 
       // Parallel rays can be cast instead using below
       //
